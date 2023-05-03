@@ -93,10 +93,10 @@ Run the `batcher.sh` script:
    ./batcher.sh path/to/your/input.yaml
 
 
-Adding Jobs Using yq
----------------------
+Programmatically Adding Jobs Using yq
+-------------------------------------
 
-A sample bash script that creates two jobs, with the second job depending on the first one, using `yq`. Here we assume that $STB_PATH contains the path to the directory containing the SLURMTaskBatcher scripts:
+A sample bash script that creates two jobs, with the second job depending on the first one, using ``yq``. Here we assume that $STB_PATH contains the path to the directory containing the SLURMTaskBatcher scripts. Additionally we use the ``inc_pseudo_job_id`` function in batcherutils.bash to get a unique pseudo job ID for each new job submitted:
 
 .. code-block:: bash
 
