@@ -74,12 +74,17 @@ SOURCE="${BASH_SOURCE[0]}"
 SOURCE=$(readlink -f "$SOURCE")
 SOURCE_DIR=$(dirname "$SOURCE")
 
+if [[ -z "$CLUSTER_TEMP" ]]; then
+    echo "The environment variable CLUSTER_TEMP must be set to a shared directory to store temporary files" >&2
+    exit 1
+fi
+
 # This helps exclude nodes that don't have sufficient memory
-export STANDARD_NODE_EXCLUDE_LIST_FILE=$(mktemp $SINGULARITYENV_CLUSTER_TEMP/tmpnodeexcludelist.XXXX)
-export STANDARD_G_NODE_EXCLUDE_LIST_FILE=$(mktemp $SINGULARITYENV_CLUSTER_TEMP/tmpnodeexcludelist.XXXX)
-export SMALL_NODE_EXCLUDE_LIST_FILE=$(mktemp $SINGULARITYENV_CLUSTER_TEMP/tmpnodeexcludelist.XXXX)
-export SMALL_G_NODE_EXCLUDE_LIST_FILE=$(mktemp $SINGULARITYENV_CLUSTER_TEMP/tmpnodeexcludelist.XXXX)
-export GLOBAL_DEPS_LOCK_FILE=$(mktemp $SINGULARITYENV_CLUSTER_TEMP/globaldepslock.XXXX)
+export STANDARD_NODE_EXCLUDE_LIST_FILE=$(mktemp $CLUSTER_TEMP/tmpnodeexcludelist.XXXX)
+export STANDARD_G_NODE_EXCLUDE_LIST_FILE=$(mktemp $CLUSTER_TEMP/tmpnodeexcludelist.XXXX)
+export SMALL_NODE_EXCLUDE_LIST_FILE=$(mktemp $CLUSTER_TEMP/tmpnodeexcludelist.XXXX)
+export SMALL_G_NODE_EXCLUDE_LIST_FILE=$(mktemp $CLUSTER_TEMP/tmpnodeexcludelist.XXXX)
+export GLOBAL_DEPS_LOCK_FILE=$(mktemp $CLUSTER_TEMP/globaldepslock.XXXX)
 
 # Read command_list file as input
 command_list="$1"
