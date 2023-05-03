@@ -169,7 +169,7 @@ for scriptname in "${script_ordered_list[@]}"; do
                                            --ntasks $batch_size $dependency_opt \
                                            --output=$LOGDIR/$scriptname-%j_OUT.txt \
                                            --error=$LOGDIR/$scriptname-%j_ERR.txt \
-                                           slurm/run_multiple.sh "$command_list" $pseudo_jobids)
+                                           $SOURCE_DIR/run_multiple.sh "$command_list" $pseudo_jobids)
 
         echo "For script $scriptname : Launched JobID: $actual_jobid containing pseudo_jobids $pseudo_jobids"
         # Update mapping from pseudo jobids to actual jobid

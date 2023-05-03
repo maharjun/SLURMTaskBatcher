@@ -99,19 +99,38 @@ SOURCE_DIR=$(dirname "$SOURCE")
 source "$SOURCE_DIR/batcherutils.bash"
 
 get_output_for_all_nodes() {
-    srun --tasks-per-node 1 --ntasks $SLURM_JOB_NUM_NODES bash -c 'echo "$(hostname) $('"$1"')"' | sort -k1 | cut -f 2
+    srun --input=none --ntasks $SLURM_JOB_NUM_NODES --tasks-per-node 1 bash -c 'echo "$(hostname) $('"$1"')"' | sort -k1 | cut -d' ' -f 2
+}
+
+accum_task_data_by_nodes() {
+    srun --input=none bash -c 'echo "$(hostname) $('"$1"')"' |
+        awk '{
+            if (NF == 2) {
+                data[$1] += $2
+            }
+        } END {
+            for (key in data) {
+                print key, data[key]
+            }
+        }' | sort -k1 | cut -d' ' -f 2;
 }
 
 CPUS_PER_TASK=$SLURM_CPUS_PER_TASK
 NUM_TASKS_PER_NODE=$(echo "$SLURM_TASKS_PER_NODE" | grep -oP '^\d+')
+NUM_TASKS=$SLURM_NTASKS
 IFS='' read -r -d '' total_cpus_command <<"EOF"
-    TOTAL_SOCKETS_ON_NODE="$(srun --input=none --ntasks 1 lscpu | grep -oP '^Socket\(s\): +?\K\d+')"
-    TOTAL_CORES_PER_SOCKET_ON_NODE="$(srun --input=none --ntasks 1 lscpu | grep -oP '^Core\(s\) per socket: +?\K\d+')"
+    TOTAL_SOCKETS_ON_NODE="$(lscpu | grep -oP '^Socket\(s\): +?\K\d+')"
+    TOTAL_CORES_PER_SOCKET_ON_NODE="$(lscpu | grep -oP '^Core\(s\) per socket: +?\K\d+')"
     TOTAL_CPUS_ON_NODE="$((TOTAL_SOCKETS_ON_NODE * TOTAL_CORES_PER_SOCKET_ON_NODE))"
     echo $TOTAL_CPUS_ON_NODE
 EOF
 
+IFS='' read -r -d '' alloc_cpus_command <<"EOF"
+    echo "$SLURM_CPUS_PER_TASK"
+EOF
+
 TOTAL_CPUS_ON_ALL_NODES=$(get_output_for_all_nodes "$total_cpus_command")
+ALLOC_CPUS_ON_ALL_NODES=$(accum_task_data_by_nodes "$alloc_cpus_command")
 
 NODES="$(get_output_for_all_nodes hostname)"
 if [[ -z "$SYSTEM_MEMORY" ]]; then
@@ -124,9 +143,9 @@ EOF
 
 TOTAL_MEMORY_ON_ALL_NODES=$(get_output_for_all_nodes "$total_memory_command")
 REQUIRED_MEM_ON_ALL_NODES=$(
-    for tot_mem in ${TOTAL_MEMORY_ON_ALL_NODES}; do
-        perl -e "print ''.(int(($CPUS_PER_TASK * $NUM_TASKS_PER_NODE / $TOTAL_CPUS_ON_NODE) * ($tot_mem - $SYSTEM_MEMORY)))"; echo
-    done
+    while read tot_mem tot_cpus alloc_cpus; do
+        perl -e "print ''.(int(($alloc_cpus / $tot_cpus) * ($tot_mem - $SYSTEM_MEMORY)))";
+    done < <(paste <(echo "${TOTAL_MEMORY_ON_ALL_NODES}") <(echo "${TOTAL_CPUS_ON_ALL_NODES}") <(echo "${ALLOC_CPUS_ON_ALL_NODES}"))
 )
 
 IFS='' read -r -d '' available_memory_command <<"EOF"
@@ -134,6 +153,8 @@ IFS='' read -r -d '' available_memory_command <<"EOF"
 EOF
 AVAILABLE_MEMORY_ON_ALL_NODES=$(get_output_for_all_nodes "$available_memory_command")
 
+# echo "THE NODES, REQUIRED_MEM_ON_ALL_NODES, AVAILABLE_MEMORY_ON_ALL_NODES"
+# paste <(echo "$NODES") <(echo "$REQUIRED_MEM_ON_ALL_NODES") <(echo "$AVAILABLE_MEMORY_ON_ALL_NODES")
 
 NODES_TO_EXCLUDE=()
 while read node req_mem avail_mem; do
@@ -144,12 +165,24 @@ done < <(paste <(echo "$NODES") <(echo "$REQUIRED_MEM_ON_ALL_NODES") <(echo "$AV
 unset node req_mem avail_mem
 NODES_TO_EXCLUDE="$(IFS=','; echo "${NODES_TO_EXCLUDE[*]}")"
 
+echo "CPUS_PER_TASK=$CPUS_PER_TASK NUM_TASKS=$NUM_TASKS TOTAL_CPUS_ON_NODE=$TOTAL_CPUS_ON_NODE"
+echo "SYSTEM_MEMORY = $SYSTEM_MEMORY"
+echo
 echo "CURRENT NODES"
 echo "$NODES"
-echo "CPUS_PER_TASK=$CPUS_PER_TASK NUM_TASKS=$NUM_TASKS TOTAL_CPUS_ON_NODE=$TOTAL_CPUS_ON_NODE"
-echo "SYSTEM_MEMORY = $SYSTEM_MEMORY TOTAL_MEMORY=$TOTAL_MEMORY"
-echo "REQUIRED_MEM = $REQUIRED_MEM"
-echo "AVAILABLE_MEMORY_ON_ALL_NODES=$AVAILABLE_MEMORY"
+echo
+echo "TOTAL_CPUS_ON_ALL_NODES"
+echo "$TOTAL_CPUS_ON_ALL_NODES"
+echo
+echo "TOTAL_MEMORY_ON_ALL_NODES"
+echo "$TOTAL_MEMORY_ON_ALL_NODES"
+echo
+echo "REQUIRED_MEM_ON_ALL_NODES"
+echo "$REQUIRED_MEM_ON_ALL_NODES"
+echo
+echo "AVAILABLE_MEMORY_ON_ALL_NODES"
+echo "$AVAILABLE_MEMORY_ON_ALL_NODES"
+echo
 echo "NODES_TO_EXCLUDE=$NODES_TO_EXCLUDE"
 
 if [[ -n "$NODES_TO_EXCLUDE" ]]; then
