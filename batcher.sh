@@ -109,7 +109,7 @@ fi
 
 declare -A pseudo_to_actual_jobid
 
-source $SOURCE_DIR/utils.bash
+source $SOURCE_DIR/batcherutils.bash
 
 # create log directory
 LOGDIR=ignored/logs/slurm_runs/generic

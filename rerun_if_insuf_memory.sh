@@ -96,7 +96,7 @@ SOURCE=$(readlink -f "$SOURCE")
 SOURCE_DIR=$(dirname "$SOURCE")
 
 # to get replace_jobids_in_dependency
-source "$SOURCE_DIR/utils.bash"
+source "$SOURCE_DIR/batcherutils.bash"
 
 get_output_for_all_nodes() {
     srun --tasks-per-node 1 --ntasks $SLURM_JOB_NUM_NODES bash -c 'echo "$(hostname) $('"$1"')"' | sort -k1 | cut -f 2
