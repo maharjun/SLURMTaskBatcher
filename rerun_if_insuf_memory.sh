@@ -309,8 +309,8 @@ if [[ -n "$NODES_TO_EXCLUDE" ]]; then
     ) 9>"$GLOBAL_DEPS_LOCK_FILE"
 
 
-    # Exit the current job
-    exit 
+    # Exit the current job with 1 to indicate that this job has been rerun. At this point, the parent process
+    exit 1
 else
   exit 0
 fi
